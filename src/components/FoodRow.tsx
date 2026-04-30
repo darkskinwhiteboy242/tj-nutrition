@@ -14,27 +14,37 @@ type Props = {
 
 export function FoodRow({ food, status, onLog, onLongPress }: Props) {
   const [pressing, setPressing] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
 
   const start = () => {
     setPressing(true);
-    timer.current = setTimeout(() => {
-      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-        navigator.vibrate(15);
-      }
-      onLog();
-      setPressing(false);
-    }, 300);
-    longTimer.current = setTimeout(() => {
-      if (onLongPress) onLongPress();
-    }, 800);
+    longPressFired.current = false;
+    if (onLongPress) {
+      longTimer.current = setTimeout(() => {
+        longPressFired.current = true;
+        onLongPress();
+      }, 800);
+    }
   };
 
-  const cancel = () => {
+  const end = () => {
     setPressing(false);
-    if (timer.current) clearTimeout(timer.current);
-    if (longTimer.current) clearTimeout(longTimer.current);
+    if (longTimer.current) {
+      clearTimeout(longTimer.current);
+      longTimer.current = null;
+    }
+  };
+
+  const handleClick = () => {
+    if (longPressFired.current) {
+      longPressFired.current = false;
+      return;
+    }
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate(15);
+    }
+    onLog();
   };
 
   const Icon = status === 'eaten' ? Check : status === 'planned' ? CircleDashed : Circle;
@@ -48,10 +58,11 @@ export function FoodRow({ food, status, onLog, onLongPress }: Props) {
   return (
     <button
       type="button"
+      onClick={handleClick}
       onPointerDown={start}
-      onPointerUp={cancel}
-      onPointerLeave={cancel}
-      onPointerCancel={cancel}
+      onPointerUp={end}
+      onPointerLeave={end}
+      onPointerCancel={end}
       className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-transform"
       style={{
         background: 'var(--bg-card)',
